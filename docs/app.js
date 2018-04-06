@@ -357,15 +357,15 @@ class MelodyGuid {
         this.ctx.stroke();
     }
 }
-(() => {
+(() => __awaiter(this, void 0, void 0, function* () {
     try {
-        new Application().main();
+        yield new Application().main();
     }
     catch (error) {
         alert("ブラウザが対応してないかマイクがないとできないよ");
         throw error;
     }
-})();
+}))();
 
 
 /***/ }),
@@ -387,7 +387,7 @@ exports.silhouette = {
     },
     "startTime": 0.327869,
     "duration": 86.96656918958301,
-    "delay": 0.6,
+    "delay": 0.65,
     "tracks": [
         {
             "startTime": 0.327869,

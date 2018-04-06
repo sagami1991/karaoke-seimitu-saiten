@@ -7,8 +7,8 @@
     "webpack-production": "NODE_ENV=production webpack",
     "webpack-production-win": "set NODE_ENV=production&& webpack",
     "webpack-production-win-watch": "set NODE_ENV=production&& webpack --watch",
-    "http-server": "http-server ./dist -p 3000 -c-1",
-    "lite-server": "lite-server --baseDir=dist"
+    "http-server": "http-server ./docs -p 3000 -c-1",
+    "lite-server": "lite-server --baseDir=docs"
   },
   "keywords": [],
   "author": "",

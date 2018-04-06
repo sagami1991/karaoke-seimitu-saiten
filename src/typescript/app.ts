@@ -298,9 +298,9 @@ class MelodyGuid {
     }
 }
 
-(() => {
+(async () => {
     try {
-        new Application().main();
+       await new Application().main();
     } catch (error) {
         alert("ブラウザが対応してないかマイクがないとできないよ");
         throw error;
