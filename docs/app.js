@@ -290,7 +290,7 @@ class MelodyGuid {
         for (const note of rangeNote) {
             this.renderBlock(note.midi, note.time - offset, note.duration);
         }
-        for (const [i, mic] of rangeMic.entries()) {
+        for (const mic of rangeMic) {
             this.renderMic(mic.midi, mic.time - offset);
         }
         this.renderLine();
@@ -303,7 +303,7 @@ class MelodyGuid {
         this.ctx.strokeStyle = "black";
         for (let i = 0; i <= const_1.CONST.MIDI_RANGE; i++) {
             this.ctx.lineWidth = 1;
-            const h = Math.floor(i * const_1.CONST.MELODY_HEIGHT / const_1.CONST.MIDI_RANGE);
+            const h = Math.floor(i * const_1.CONST.MELODY_HEIGHT / const_1.CONST.MIDI_RANGE) + 0.5;
             this.ctx.beginPath();
             this.ctx.moveTo(0, h);
             this.ctx.lineTo(const_1.CONST.MELODY_WIDTH, h);
