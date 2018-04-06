@@ -3,7 +3,6 @@ import { CONST } from "./const";
 import { AudioConvertUtil, MathUtil, ElementUtil } from "./util";
 
 class Application {
-    private isLoop = false;
     private audioContext!: AudioContext;
     private analyser!: AnalyserNode;
     private timeDomain!: Float32Array;
@@ -50,16 +49,20 @@ class Application {
 
     public start() {
         this.startButton.disabled = true;
+        let intervalId: number = 0;
         this.youtube.setStateChangeListener((state) => {
             switch (state) {
                 case YT.PlayerState.PLAYING:
-                    this.isLoop = true;
                     this.stopButton.disabled = false;
                     this.melodyGuid.start();
-                    this.frame();
+                    intervalId = setInterval(() => {
+                        this.frame();
+                        this.melodyGuid.frame();
+                    }, 1000 / CONST.FPS);
                     break;
                 case YT.PlayerState.PAUSED:
                 case YT.PlayerState.ENDED:
+                    clearInterval(intervalId);
                     this.stop();
                     break;
             }
@@ -70,13 +73,10 @@ class Application {
     public stop() {
         this.stopButton.disabled = true;
         this.startButton.disabled = false;
-        this.isLoop = false;
-        this.melodyGuid.stop();
         this.youtube.stop();
     }
 
     private frame() {
-        const roopId = requestAnimationFrame(() => this.frame());
         this.analyser.getFloatTimeDomainData(this.timeDomain);
         this.analyser.getByteFrequencyData(this.frequency);
         const personVoiceFrequency = this.filterFrequency(this.frequency);
@@ -100,9 +100,6 @@ class Application {
         } else {
             this.renderVolume(0);
         }
-        if (!this.isLoop) {
-            cancelAnimationFrame(roopId);
-        }
     }
 
     private filterFrequency(frequencyData: Uint8Array): Uint8Array {
@@ -123,13 +120,10 @@ class Application {
             (navigator as any).mozGetUserMedia ||
             (navigator as any).msGetUserMedia;
         return new Promise<MediaStream>((resolve, reject) => {
-            navigator.getUserMedia({
+            navigator.mediaDevices.getUserMedia({
                 audio: true
-            }, (stream) => {
-                resolve(stream);
-            }, () => {
-                reject();
-            });
+            }).then((stream) => resolve(stream))
+            .catch((reason) => reject(reason));
         });
 
     }
@@ -187,7 +181,6 @@ class MelodyGuid {
     private ctx: CanvasRenderingContext2D;
     private octabeElement: HTMLElement;
     private startTime!: Date;
-    private isLoop: boolean = false;
     private MicRecords: IPitchBlock[];
     constructor() {
         this.octabeElement = document.querySelector(".octabe") as HTMLElement;
@@ -199,13 +192,7 @@ class MelodyGuid {
 
     public start() {
         this.MicRecords = [];
-        this.isLoop = true;
         this.startTime = new Date();
-        this.frame();
-    }
-
-    public stop() {
-        this.isLoop = false;
     }
 
     public addMic(frequency: number) {
@@ -228,7 +215,6 @@ class MelodyGuid {
     }
 
     public frame() {
-        const roopId = requestAnimationFrame(() => this.frame());
         this.ctx.clearRect(0, 0, CONST.MELODY_WIDTH, CONST.MELODY_HEIGHT);
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
         const notes = silhouette.tracks[0].notes;
@@ -243,9 +229,6 @@ class MelodyGuid {
         }
         this.renderLine();
         this.renderNowTime(now - offset);
-        if (!this.isLoop) {
-            cancelAnimationFrame(roopId);
-        }
     }
 
     private filterRange<T extends { time: number }>(blocks: T[], offset: number) {
@@ -300,9 +283,9 @@ class MelodyGuid {
 
 (async () => {
     try {
-       await new Application().main();
+        await new Application().main();
     } catch (error) {
-        alert("ブラウザが対応してないかマイクがないとできないよ");
+        alert("ブラウザが対応してないかマイクがないからできないよ");
         throw error;
     }
 })();

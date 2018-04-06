@@ -6,6 +6,6 @@ export const CONST = {
     BASE_SEC: 8,
     FFT: 2048,
     MIDI_RANGE: 24,
-    FPS: 60,
+    FPS: 30,
     MIC_FREQ_OFFSET: 50
 };

@@ -78,7 +78,7 @@ exports.CONST = {
     BASE_SEC: 8,
     FFT: 2048,
     MIDI_RANGE: 24,
-    FPS: 60,
+    FPS: 30,
     MIC_FREQ_OFFSET: 50
 };
 
@@ -103,7 +103,6 @@ const const_1 = __webpack_require__(0);
 const util_1 = __webpack_require__(3);
 class Application {
     constructor() {
-        this.isLoop = false;
         this.enableVoiceCount = 0;
         this.melodyGuid = new MelodyGuid();
         this.stopButton = document.querySelector(".stop-button");
@@ -138,16 +137,20 @@ class Application {
     }
     start() {
         this.startButton.disabled = true;
+        let intervalId = 0;
         this.youtube.setStateChangeListener((state) => {
             switch (state) {
                 case YT.PlayerState.PLAYING:
-                    this.isLoop = true;
                     this.stopButton.disabled = false;
                     this.melodyGuid.start();
-                    this.frame();
+                    intervalId = setInterval(() => {
+                        this.frame();
+                        this.melodyGuid.frame();
+                    }, 1000 / const_1.CONST.FPS);
                     break;
                 case YT.PlayerState.PAUSED:
                 case YT.PlayerState.ENDED:
+                    clearInterval(intervalId);
                     this.stop();
                     break;
             }
@@ -157,12 +160,9 @@ class Application {
     stop() {
         this.stopButton.disabled = true;
         this.startButton.disabled = false;
-        this.isLoop = false;
-        this.melodyGuid.stop();
         this.youtube.stop();
     }
     frame() {
-        const roopId = requestAnimationFrame(() => this.frame());
         this.analyser.getFloatTimeDomainData(this.timeDomain);
         this.analyser.getByteFrequencyData(this.frequency);
         const personVoiceFrequency = this.filterFrequency(this.frequency);
@@ -187,9 +187,6 @@ class Application {
         else {
             this.renderVolume(0);
         }
-        if (!this.isLoop) {
-            cancelAnimationFrame(roopId);
-        }
     }
     filterFrequency(frequencyData) {
         const maxIndex = Math.floor(this.analyser.fftSize / 44100 * 3000);
@@ -209,13 +206,10 @@ class Application {
                 navigator.mozGetUserMedia ||
                 navigator.msGetUserMedia;
             return new Promise((resolve, reject) => {
-                navigator.getUserMedia({
+                navigator.mediaDevices.getUserMedia({
                     audio: true
-                }, (stream) => {
-                    resolve(stream);
-                }, () => {
-                    reject();
-                });
+                }).then((stream) => resolve(stream))
+                    .catch((reason) => reject(reason));
             });
         });
     }
@@ -258,7 +252,6 @@ class YoutubeAPI {
 }
 class MelodyGuid {
     constructor() {
-        this.isLoop = false;
         this.octabeElement = document.querySelector(".octabe");
         const canvas = document.querySelector(".melody-guide");
         this.ctx = canvas.getContext("2d");
@@ -267,12 +260,7 @@ class MelodyGuid {
     }
     start() {
         this.MicRecords = [];
-        this.isLoop = true;
         this.startTime = new Date();
-        this.frame();
-    }
-    stop() {
-        this.isLoop = false;
     }
     addMic(frequency) {
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
@@ -293,7 +281,6 @@ class MelodyGuid {
         });
     }
     frame() {
-        const roopId = requestAnimationFrame(() => this.frame());
         this.ctx.clearRect(0, 0, const_1.CONST.MELODY_WIDTH, const_1.CONST.MELODY_HEIGHT);
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
         const notes = silhouette_1.silhouette.tracks[0].notes;
@@ -308,9 +295,6 @@ class MelodyGuid {
         }
         this.renderLine();
         this.renderNowTime(now - offset);
-        if (!this.isLoop) {
-            cancelAnimationFrame(roopId);
-        }
     }
     filterRange(blocks, offset) {
         return blocks.filter((block) => offset <= block.time && block.time < offset + const_1.CONST.BASE_SEC);
@@ -362,7 +346,7 @@ class MelodyGuid {
         yield new Application().main();
     }
     catch (error) {
-        alert("ブラウザが対応してないかマイクがないとできないよ");
+        alert("ブラウザが対応してないかマイクがないからできないよ");
         throw error;
     }
 }))();
