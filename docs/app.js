@@ -133,28 +133,29 @@ class Application {
             this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
             this.audioContext.createMediaStreamSource(stream).connect(this.analyser);
             this.startButton.disabled = false;
+            let intervalId = 0;
+            this.youtube.setStateChangeListener((state) => {
+                switch (state) {
+                    case YT.PlayerState.PLAYING:
+                        this.startButton.disabled = true;
+                        this.stopButton.disabled = false;
+                        this.melodyGuid.start();
+                        intervalId = setInterval(() => {
+                            this.frame();
+                            this.melodyGuid.frame();
+                        }, 1000 / const_1.CONST.FPS);
+                        break;
+                    case YT.PlayerState.PAUSED:
+                    case YT.PlayerState.ENDED:
+                        clearInterval(intervalId);
+                        this.stop();
+                        break;
+                }
+            });
         });
     }
     start() {
         this.startButton.disabled = true;
-        let intervalId = 0;
-        this.youtube.setStateChangeListener((state) => {
-            switch (state) {
-                case YT.PlayerState.PLAYING:
-                    this.stopButton.disabled = false;
-                    this.melodyGuid.start();
-                    intervalId = setInterval(() => {
-                        this.frame();
-                        this.melodyGuid.frame();
-                    }, 1000 / const_1.CONST.FPS);
-                    break;
-                case YT.PlayerState.PAUSED:
-                case YT.PlayerState.ENDED:
-                    clearInterval(intervalId);
-                    this.stop();
-                    break;
-            }
-        });
         this.youtube.start();
     }
     stop() {

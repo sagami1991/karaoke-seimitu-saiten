@@ -45,14 +45,11 @@ class Application {
         this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
         this.audioContext.createMediaStreamSource(stream).connect(this.analyser);
         this.startButton.disabled = false;
-    }
-
-    public start() {
-        this.startButton.disabled = true;
         let intervalId: number = 0;
         this.youtube.setStateChangeListener((state) => {
             switch (state) {
                 case YT.PlayerState.PLAYING:
+                    this.startButton.disabled = true;
                     this.stopButton.disabled = false;
                     this.melodyGuid.start();
                     intervalId = setInterval(() => {
@@ -67,6 +64,10 @@ class Application {
                     break;
             }
         });
+    }
+
+    public start() {
+        this.startButton.disabled = true;
         this.youtube.start();
     }
 
