@@ -3,24 +3,21 @@ import { CONST } from "./const";
 import { AudioConvertUtil, MathUtil, ElementUtil } from "./util";
 
 class Application {
-    private audioContext!: AudioContext;
     private analyser!: AnalyserNode;
-    private timeDomain!: Float32Array;
     private frequency!: Uint8Array;
-    private enableVoiceCount: number = 0;
     private personMinIndex: number;
     private melodyGuid: MelodyGuid;
     private volumeCtx: CanvasRenderingContext2D;
     private stopButton: HTMLButtonElement;
     private startButton: HTMLButtonElement;
-    private micFrequencyDiv: HTMLElement;
+    private micFrequencyElement: HTMLElement;
     private youtube: YoutubeAPI;
 
     constructor() {
         this.melodyGuid = new MelodyGuid();
         this.stopButton = document.querySelector(".stop-button") as HTMLButtonElement;
         this.startButton = document.querySelector(".start-button") as HTMLButtonElement;
-        this.micFrequencyDiv = document.querySelector(".mic-frequency") as HTMLButtonElement;
+        this.micFrequencyElement = document.querySelector(".mic-frequency") as HTMLButtonElement;
         this.startButton.disabled = true;
         this.stopButton.disabled = true;
         this.startButton.addEventListener("click", () => {
@@ -39,11 +36,10 @@ class Application {
     public async main() {
         const stream = await this.permissionMicInput();
         document.querySelector("audio")!.src = URL.createObjectURL(stream);
-        this.audioContext = new AudioContext();
-        this.analyser = this.audioContext.createAnalyser();
-        this.timeDomain = new Float32Array(this.analyser.frequencyBinCount);
+        const audioContext = new AudioContext();
+        this.analyser = audioContext.createAnalyser();
         this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
-        this.audioContext.createMediaStreamSource(stream).connect(this.analyser);
+        audioContext.createMediaStreamSource(stream).connect(this.analyser);
         this.startButton.disabled = false;
         let intervalId: number = 0;
         this.youtube.setStateChangeListener((state) => {
@@ -78,12 +74,10 @@ class Application {
     }
 
     private frame() {
-        this.analyser.getFloatTimeDomainData(this.timeDomain);
         this.analyser.getByteFrequencyData(this.frequency);
         const personVoiceFrequency = this.filterFrequency(this.frequency);
         const averageMicVolume = MathUtil.average(personVoiceFrequency);
         if (averageMicVolume > 20) {
-            this.enableVoiceCount = 4;
             const squereFrequency = personVoiceFrequency.map((f) => f);
             const indexOfMaxValue = MathUtil.getIndexOfMaxValue(squereFrequency);
             // indexだけだと大雑把になるので線形補完
@@ -91,22 +85,16 @@ class Application {
             const x1 = (y2 - y0) * 0.5 / (2 * y1 - y2 - y0);
             const frequency = AudioConvertUtil.indexToFrequency(indexOfMaxValue + x1 + this.personMinIndex);
             this.melodyGuid.addMic(frequency);
-            this.micFrequencyDiv.textContent = `マイク音程: ${frequency}Hz`;
-        } else if (this.enableVoiceCount >= 0) {
-            this.enableVoiceCount--;
+            this.micFrequencyElement.textContent = `マイク音程: ${frequency}Hz`;
         }
-
-        if (this.enableVoiceCount > 0) {
-            this.renderVolume(averageMicVolume);
-        } else {
-            this.renderVolume(0);
-        }
+        this.renderVolume(averageMicVolume);
     }
 
     private filterFrequency(frequencyData: Uint8Array): Uint8Array {
         const maxIndex = Math.floor(this.analyser.fftSize / 44100 * 3000);
         return frequencyData.slice(this.personMinIndex, maxIndex);
     }
+
     private renderVolume(volume: number) {
         this.volumeCtx.clearRect(0, 0, 200, 100);
         this.volumeCtx.fillStyle = "blue";
@@ -124,16 +112,15 @@ class Application {
             navigator.mediaDevices.getUserMedia({
                 audio: true
             }).then((stream) => resolve(stream))
-            .catch((reason) => reject(reason));
+                .catch((reason) => reject(reason));
         });
-
     }
-
 }
 
 class YoutubeAPI {
     private stateChange!: (state: 1 | 2) => void;
     private player!: YT.Player;
+
     public setStateChangeListener(func: (state: 1 | 2) => void) {
         this.stateChange = func;
     }
@@ -176,18 +163,18 @@ class YoutubeAPI {
 interface IPitchBlock {
     time: number;
     midi: number;
+    duration?: number;
 }
 
 class MelodyGuid {
     private ctx: CanvasRenderingContext2D;
-    private octabeElement: HTMLElement;
+    private okusitaElement: HTMLElement;
     private startTime!: Date;
-    private MicRecords: IPitchBlock[];
+    private MicRecords!: IPitchBlock[];
     constructor() {
-        this.octabeElement = document.querySelector(".octabe") as HTMLElement;
+        this.okusitaElement = document.querySelector(".octabe") as HTMLElement;
         const canvas = document.querySelector(".melody-guide") as HTMLCanvasElement;
         this.ctx = canvas.getContext("2d")!;
-        this.MicRecords = [];
         silhouette.tracks[0].notes.forEach((note) => note.time += silhouette.delay);
     }
 
@@ -204,35 +191,34 @@ class MelodyGuid {
             if (60 - 12 > midi) {
                 midi += 12;
             }
-            this.octabeElement.textContent = "オク下である";
+            this.okusitaElement.textContent = "オク下である";
         } else {
-            this.octabeElement.textContent = "オク下でない";
+            this.okusitaElement.textContent = "オク下でない";
         }
         this.MicRecords.push({
             time: now,
             midi: midi
         });
-
     }
 
     public frame() {
         this.ctx.clearRect(0, 0, CONST.MELODY_WIDTH, CONST.MELODY_HEIGHT);
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
         const notes = silhouette.tracks[0].notes;
-        const offset = Math.floor(now / CONST.BASE_SEC) * CONST.BASE_SEC;
-        const rangeNote = this.filterRange(notes, offset);
-        const rangeMic = this.filterRange(this.MicRecords, offset);
-        for (const note of rangeNote) {
-            this.renderBlock(note.midi, note.time - offset, note.duration);
+        const offsetSecond = Math.floor(now / CONST.BASE_SEC) * CONST.BASE_SEC;
+        const turnMelodies = this.filterRange(notes, offsetSecond);
+        const turnMicRecords = this.filterRange(this.MicRecords, offsetSecond);
+        for (const note of turnMelodies) {
+            this.renderBlock(note.midi, note.time - offsetSecond, note.duration!);
         }
-        for (const mic of rangeMic) {
-            this.renderMic(mic.midi, mic.time - offset);
+        for (const mic of turnMicRecords) {
+            this.renderMic(mic.midi, mic.time - offsetSecond);
         }
         this.renderLine();
-        this.renderNowTime(now - offset);
+        this.renderNowTimeline(now - offsetSecond);
     }
 
-    private filterRange<T extends { time: number }>(blocks: T[], offset: number) {
+    private filterRange(blocks: IPitchBlock[], offset: number) {
         return blocks.filter((block) => offset <= block.time && block.time < offset + CONST.BASE_SEC);
     }
 
@@ -247,6 +233,7 @@ class MelodyGuid {
             this.ctx.stroke();
         }
     }
+
     private renderBlock(midiLevel: number, start: number, duration: number) {
         if (midiLevel < CONST.MIDI_LEVEL_OFFSET ||
             CONST.MIDI_LEVEL_OFFSET + CONST.MIDI_RANGE <= midiLevel) {
@@ -273,7 +260,7 @@ class MelodyGuid {
         this.ctx.fillRect(x, y, unitWidth, unitHeight / 2);
     }
 
-    private renderNowTime(time: number) {
+    private renderNowTimeline(time: number) {
         this.ctx.strokeStyle = "blue";
         this.ctx.beginPath();
         this.ctx.moveTo(time / CONST.BASE_SEC * CONST.MELODY_WIDTH, 0);

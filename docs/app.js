@@ -103,11 +103,10 @@ const const_1 = __webpack_require__(0);
 const util_1 = __webpack_require__(3);
 class Application {
     constructor() {
-        this.enableVoiceCount = 0;
         this.melodyGuid = new MelodyGuid();
         this.stopButton = document.querySelector(".stop-button");
         this.startButton = document.querySelector(".start-button");
-        this.micFrequencyDiv = document.querySelector(".mic-frequency");
+        this.micFrequencyElement = document.querySelector(".mic-frequency");
         this.startButton.disabled = true;
         this.stopButton.disabled = true;
         this.startButton.addEventListener("click", () => {
@@ -127,11 +126,10 @@ class Application {
         return __awaiter(this, void 0, void 0, function* () {
             const stream = yield this.permissionMicInput();
             document.querySelector("audio").src = URL.createObjectURL(stream);
-            this.audioContext = new AudioContext();
-            this.analyser = this.audioContext.createAnalyser();
-            this.timeDomain = new Float32Array(this.analyser.frequencyBinCount);
+            const audioContext = new AudioContext();
+            this.analyser = audioContext.createAnalyser();
             this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
-            this.audioContext.createMediaStreamSource(stream).connect(this.analyser);
+            audioContext.createMediaStreamSource(stream).connect(this.analyser);
             this.startButton.disabled = false;
             let intervalId = 0;
             this.youtube.setStateChangeListener((state) => {
@@ -164,12 +162,10 @@ class Application {
         this.youtube.stop();
     }
     frame() {
-        this.analyser.getFloatTimeDomainData(this.timeDomain);
         this.analyser.getByteFrequencyData(this.frequency);
         const personVoiceFrequency = this.filterFrequency(this.frequency);
         const averageMicVolume = util_1.MathUtil.average(personVoiceFrequency);
         if (averageMicVolume > 20) {
-            this.enableVoiceCount = 4;
             const squereFrequency = personVoiceFrequency.map((f) => f);
             const indexOfMaxValue = util_1.MathUtil.getIndexOfMaxValue(squereFrequency);
             // indexだけだと大雑把になるので線形補完
@@ -177,17 +173,9 @@ class Application {
             const x1 = (y2 - y0) * 0.5 / (2 * y1 - y2 - y0);
             const frequency = util_1.AudioConvertUtil.indexToFrequency(indexOfMaxValue + x1 + this.personMinIndex);
             this.melodyGuid.addMic(frequency);
-            this.micFrequencyDiv.textContent = `マイク音程: ${frequency}Hz`;
+            this.micFrequencyElement.textContent = `マイク音程: ${frequency}Hz`;
         }
-        else if (this.enableVoiceCount >= 0) {
-            this.enableVoiceCount--;
-        }
-        if (this.enableVoiceCount > 0) {
-            this.renderVolume(averageMicVolume);
-        }
-        else {
-            this.renderVolume(0);
-        }
+        this.renderVolume(averageMicVolume);
     }
     filterFrequency(frequencyData) {
         const maxIndex = Math.floor(this.analyser.fftSize / 44100 * 3000);
@@ -253,10 +241,9 @@ class YoutubeAPI {
 }
 class MelodyGuid {
     constructor() {
-        this.octabeElement = document.querySelector(".octabe");
+        this.okusitaElement = document.querySelector(".octabe");
         const canvas = document.querySelector(".melody-guide");
         this.ctx = canvas.getContext("2d");
-        this.MicRecords = [];
         silhouette_1.silhouette.tracks[0].notes.forEach((note) => note.time += silhouette_1.silhouette.delay);
     }
     start() {
@@ -271,10 +258,10 @@ class MelodyGuid {
             if (60 - 12 > midi) {
                 midi += 12;
             }
-            this.octabeElement.textContent = "オク下である";
+            this.okusitaElement.textContent = "オク下である";
         }
         else {
-            this.octabeElement.textContent = "オク下でない";
+            this.okusitaElement.textContent = "オク下でない";
         }
         this.MicRecords.push({
             time: now,
@@ -285,17 +272,17 @@ class MelodyGuid {
         this.ctx.clearRect(0, 0, const_1.CONST.MELODY_WIDTH, const_1.CONST.MELODY_HEIGHT);
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
         const notes = silhouette_1.silhouette.tracks[0].notes;
-        const offset = Math.floor(now / const_1.CONST.BASE_SEC) * const_1.CONST.BASE_SEC;
-        const rangeNote = this.filterRange(notes, offset);
-        const rangeMic = this.filterRange(this.MicRecords, offset);
-        for (const note of rangeNote) {
-            this.renderBlock(note.midi, note.time - offset, note.duration);
+        const offsetSecond = Math.floor(now / const_1.CONST.BASE_SEC) * const_1.CONST.BASE_SEC;
+        const turnMelodies = this.filterRange(notes, offsetSecond);
+        const turnMicRecords = this.filterRange(this.MicRecords, offsetSecond);
+        for (const note of turnMelodies) {
+            this.renderBlock(note.midi, note.time - offsetSecond, note.duration);
         }
-        for (const mic of rangeMic) {
-            this.renderMic(mic.midi, mic.time - offset);
+        for (const mic of turnMicRecords) {
+            this.renderMic(mic.midi, mic.time - offsetSecond);
         }
         this.renderLine();
-        this.renderNowTime(now - offset);
+        this.renderNowTimeline(now - offsetSecond);
     }
     filterRange(blocks, offset) {
         return blocks.filter((block) => offset <= block.time && block.time < offset + const_1.CONST.BASE_SEC);
@@ -334,7 +321,7 @@ class MelodyGuid {
         this.ctx.beginPath();
         this.ctx.fillRect(x, y, unitWidth, unitHeight / 2);
     }
-    renderNowTime(time) {
+    renderNowTimeline(time) {
         this.ctx.strokeStyle = "blue";
         this.ctx.beginPath();
         this.ctx.moveTo(time / const_1.CONST.BASE_SEC * const_1.CONST.MELODY_WIDTH, 0);
