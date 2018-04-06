@@ -358,11 +358,13 @@ class MelodyGuid {
     }
 }
 (() => {
-    // try {
-    new Application().main();
-    // } catch (error) {
-    //     alert("ブラウザが対応してないかマイクがないとできないよ");
-    // }
+    try {
+        new Application().main();
+    }
+    catch (error) {
+        alert("ブラウザが対応してないかマイクがないとできないよ");
+        throw error;
+    }
 })();
 
 

@@ -284,7 +284,7 @@ class MelodyGuid {
         const unitWidth = CONST.MELODY_WIDTH / CONST.BASE_SEC / 30;
         const x = start / CONST.BASE_SEC * CONST.MELODY_WIDTH - unitWidth * 6;
         const y = CONST.MELODY_HEIGHT - (midiLevel - CONST.MIDI_LEVEL_OFFSET) / CONST.MIDI_RANGE * CONST.MELODY_HEIGHT
-         + unitHeight / 4;
+            + unitHeight / 4;
         this.ctx.beginPath();
         this.ctx.fillRect(x, y, unitWidth, unitHeight / 2);
     }
@@ -296,14 +296,13 @@ class MelodyGuid {
         this.ctx.lineTo(time / CONST.BASE_SEC * CONST.MELODY_WIDTH, CONST.MELODY_HEIGHT);
         this.ctx.stroke();
     }
-
-
 }
 
 (() => {
-    // try {
-    new Application().main();
-    // } catch (error) {
-    //     alert("ブラウザが対応してないかマイクがないとできないよ");
-    // }
+    try {
+        new Application().main();
+    } catch (error) {
+        alert("ブラウザが対応してないかマイクがないとできないよ");
+        throw error;
+    }
 })();
