@@ -1,0 +1,46 @@
+import { CONST } from "./const";
+
+export class ElementUtil {
+    static builder(html: string) {
+        const container = document.createElement("div");
+        container.innerHTML = html;
+        if (container.children.length !== 1) {
+            throw new Error(`親要素はひとつまで 数: ${container.children.length} html: ${html}`);
+        }
+        const element = container.firstElementChild;
+        container.removeChild(element!);
+        return element as HTMLElement;
+    }
+}
+
+export class MathUtil {
+    public static average(array: number[] | Uint8Array) {
+        return MathUtil.sum(array) / array.length;
+    }
+
+    public static sum(array: number[] | Uint8Array) {
+        let sum = 0;
+        for (const num of array) {
+            sum += num;
+        }
+        return sum;
+    }
+
+    public static getIndexOfMaxValue(array: Uint8Array) {
+        return array.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
+    }
+
+    public static tail(array: any[]) {
+        return array[array.length - 1];
+    }
+}
+
+export class AudioConvertUtil {
+    public static frequencyToMidi(f: number) {
+        return Math.log2(f / 440) * 12 + 69;
+    }
+
+    public static indexToFrequency(index: number) {
+        return Math.round(index * CONST.FRAMERATE / CONST.FFT);
+    }
+}

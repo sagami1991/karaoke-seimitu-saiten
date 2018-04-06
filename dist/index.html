@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="./style.css">
+    <title>カラオケ精密採点くん</title>
+</head>
+
+<body>
+    <h1>カラオケ精密採点くん</h1>
+    <audio muted></audio>
+    <button class="start-button">start</button>
+    <button class="stop-button">stop</button>
+    <div class="melody-container">
+            <div class="mic-frequency">マイク音程:</div>
+            <div class="volume-container">
+                マイクボリューム:
+                <canvas class="volume-meter" width=200 height=10></canvas>
+            </div>
+            <div class="octabe-container">
+                オク下判定: <span class="octabe"></span>
+            </div>
+        <canvas class="melody-guide" width=400 height=300></canvas>
+    </div>
+    <div class="youtube-container"></div>
+    <script src="./app.js"></script>
+</body>
+
+</html>
