@@ -10,7 +10,7 @@ export const silhouette = {
     },
     "startTime": 0.327869,
     "duration": 86.96656918958301,
-    "delay": 0.65,
+    "delay": 4.65,
     "tracks": [
         {
             "startTime": 0.327869,

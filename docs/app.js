@@ -232,7 +232,7 @@ class YoutubeAPI {
         const param = `version=3&enablejsapi=1&origin=${currentUrl}`;
         const iframe = util_1.ElementUtil.builder(`
             <iframe id="player" width="${560}" height="${315}"
-             src="https://www.youtube.com/embed/${"cXeb9cb6k0I"}?${param}"
+             src="https://www.youtube.com/embed/${"6h71uYUVRSg"}?${param}"
              frameborder="0"></iframe>
         `);
         const youtubeContainer = document.querySelector(".youtube-container");
@@ -359,7 +359,7 @@ exports.silhouette = {
     },
     "startTime": 0.327869,
     "duration": 86.96656918958301,
-    "delay": 0.65,
+    "delay": 4.65,
     "tracks": [
         {
             "startTime": 0.327869,

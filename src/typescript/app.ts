@@ -152,7 +152,7 @@ class YoutubeAPI {
         const param = `version=3&enablejsapi=1&origin=${currentUrl}`;
         const iframe = ElementUtil.builder(`
             <iframe id="player" width="${560}" height="${315}"
-             src="https://www.youtube.com/embed/${"cXeb9cb6k0I"}?${param}"
+             src="https://www.youtube.com/embed/${"6h71uYUVRSg"}?${param}"
              frameborder="0"></iframe>
         `);
         const youtubeContainer = document.querySelector(".youtube-container") as HTMLElement;
