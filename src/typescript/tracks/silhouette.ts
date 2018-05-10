@@ -1,16 +1,9 @@
 export const silhouette = {
-    "header": {
-        "PPQ": 480,
-        "timeSignature": [
-            4,
-            4
-        ],
-        "bpm": 182.99991765003705,
-        "name": ""
-    },
-    "startTime": 0.327869,
-    "duration": 86.96656918958301,
     "delay": 4.65,
+    "youtubeId": "6h71uYUVRSg",
+    "titie": "シルエット",
+    "cover": "https://i1.sndcdn.com/artworks-000093734637-p2h4nv-t500x500.jpg",
+    "midiOffset": 50,
     "tracks": [
         {
             "startTime": 0.327869,

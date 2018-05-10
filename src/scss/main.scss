@@ -1,7 +1,44 @@
+@import "./trackTile.scss";
+*,
+*:before {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Yu Gothic", "ヒラギノ角ゴ Pro W3", "メイリオ", sans-serif;
+}
 
 .melody-container {
     .mic-frequency {
         font-size: 16px;
         font-weight: bold;
+    }
+}
+
+.icon-svg {
+    display: block;
+    fill: currentColor;
+    &.icon-s {
+        width: 16px;
+        height: 16px;
+    }
+    &.icon-m {
+        width: 24px;
+        height: 24px;
+    }
+    &.icon-48 {
+        width: 48px;
+        height: 48px;
+    }
+    &.icon-32 {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+button {
+    outline: 0;
+    &:hover {
+        outline: 0;
     }
 }

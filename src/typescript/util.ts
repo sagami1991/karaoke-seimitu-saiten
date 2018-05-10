@@ -1,4 +1,6 @@
 import { CONST } from "./const";
+export type IconName = "icon-play";
+export type IconSize = "s" | "m"  | "32" | "48";
 
 export class ElementUtil {
     static builder(html: string) {
@@ -11,6 +13,14 @@ export class ElementUtil {
         container.removeChild(element!);
         return element as HTMLElement;
     }
+
+    static getSvgIcon(icon: IconName, size: IconSize = "m", className?: string): string {
+        return `
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon-svg icon-${size} ${className || ""}">
+            <use xlink:href="#${icon}"/>
+        </svg>`;
+    }
+
 }
 
 export class MathUtil {
