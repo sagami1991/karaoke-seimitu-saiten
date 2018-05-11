@@ -1,0 +1,12 @@
+.youtube-container {
+    position: relative;
+    width: 560px;
+    .melody-guide {
+        position: absolute;
+        margin: auto;
+        top: 6px;
+        right: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.49);
+    }
+}

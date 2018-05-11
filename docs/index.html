@@ -20,24 +20,21 @@
 </head>
 
 <body>
+    <div class="svg-container" style="display:none"></div>
     <h1>カラオケ精密採点くん</h1>
-    <div style="font-size:12px;">PCに繋いだマイクの音程を表示します（スマホだと通話モードになり音がバグる）</div>
-    <audio muted></audio>
-    <button class="start-button">start</button>
+    <div class="track-select-container"></div>
+    <div style="font-size:12px;">PCに繋いだマイクの音程を表示します（スマホ非対応）</div>
     <button class="stop-button">stop</button>
+    <a class="download" style="display: none;" target="blank" download="record.webm">音程調整した音声をダウンロード</a>
     <div class="melody-container">
-        <div class="mic-frequency">マイク音程:</div>
         <div class="volume-container">
             マイクボリューム:
             <canvas class="volume-meter" width=200 height=10></canvas>
         </div>
-        <div class="octabe-container">
-            オク下判定:
-            <span class="octabe"></span>
-        </div>
+    </div>
+    <div class="youtube-container">
         <canvas class="melody-guide" width=400 height=300></canvas>
     </div>
-    <div class="youtube-container"></div>
     <script src="./app.js"></script>
 </body>
 

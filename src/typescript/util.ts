@@ -40,7 +40,7 @@ export class MathUtil {
         return array.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
     }
 
-    public static tail(array: any[]) {
+    public static tail<T>(array: T[]) {
         return array[array.length - 1];
     }
 }
@@ -48,6 +48,10 @@ export class MathUtil {
 export class AudioConvertUtil {
     public static frequencyToMidi(f: number) {
         return Math.log2(f / 440) * 12 + 69;
+    }
+
+    public static MidiToFrequency(midi: number) {
+        return 440 * Math.pow(2, (midi - 69) / 12);
     }
 
     public static indexToFrequency(index: number) {
