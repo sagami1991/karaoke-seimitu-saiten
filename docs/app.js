@@ -172,22 +172,19 @@ class Application {
             this.stopButton.disabled = true;
             this.youtube.stop();
             const audioUrl = yield this.audioAnalyzer.stopRecord();
-            this.downloadLink.style.display = "block";
+            this.downloadLink.style.display = "inline-block";
             this.downloadLink.href = audioUrl;
         });
     }
     frame() {
         const micData = this.audioAnalyzer.getFrameMicData();
+        const nowMidi = this.melodyGuid.getNowMidi();
         if (micData.frequency) {
             this.melodyGuid.addMicPitch(micData.frequency);
-            const nowMidi = this.melodyGuid.getNowMidi();
-            if (nowMidi) {
-                const pitch = util_1.AudioConvertUtil.MidiToFrequency(nowMidi) / micData.frequency;
-                this.audioAnalyzer.setPitch(pitch);
-            }
-            else {
-                this.audioAnalyzer.setPitch(1);
-            }
+        }
+        if (nowMidi && micData.frequency) {
+            const pitch = util_1.AudioConvertUtil.MidiToFrequency(nowMidi) / micData.frequency;
+            this.audioAnalyzer.setPitch(pitch);
         }
         else {
             this.audioAnalyzer.setPitch(1);
@@ -219,13 +216,9 @@ class VolumeUI {
     }
 }
 class YoutubeAPI {
-    // private ready!: () => void;
     setStateChangeListener(func) {
         this.stateChange = func;
     }
-    // public setReadyListener(func: () => void) {
-    //     this.ready = func;
-    // }
     start() {
         this.player.playVideo();
     }
@@ -281,22 +274,22 @@ class MelodyGuid {
     }
     addMicPitch(frequency) {
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
-        let midi = util_1.AudioConvertUtil.frequencyToMidi(frequency);
-        if (60 > midi) {
-            midi += 12;
-            if (60 - 12 > midi) {
-                midi += 12;
+        let micMidiNumber = util_1.AudioConvertUtil.frequencyToMidi(frequency);
+        if (this.midiOffset > micMidiNumber) {
+            micMidiNumber += 12;
+            if (this.midiOffset > micMidiNumber) {
+                micMidiNumber += 12;
             }
         }
         this.MicRecords.push({
             time: now,
-            midi: midi
+            midi: micMidiNumber
         });
     }
     getNowMidi() {
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
-        const nowOrigin = this.originRecords.filter(block => {
-            return block.time <= now && now <= block.time + block.duration;
+        const nowOrigin = this.originRecords.filter((block) => {
+            return block.time <= (now - this.delay) && (now - this.delay) <= block.time + block.duration;
         });
         if (nowOrigin[0]) {
             return nowOrigin[0].midi;
@@ -347,11 +340,25 @@ class MelodyGuid {
         }
         const width = duration / const_1.CONST.BASE_SEC * const_1.CONST.MELODY_WIDTH;
         const x = start / const_1.CONST.BASE_SEC * const_1.CONST.MELODY_WIDTH;
-        const y = const_1.CONST.MELODY_HEIGHT - (midiLevel - this.midiOffset) / const_1.CONST.MIDI_RANGE * const_1.CONST.MELODY_HEIGHT;
-        const height = const_1.CONST.MELODY_HEIGHT / const_1.CONST.MIDI_RANGE;
+        const y = const_1.CONST.MELODY_HEIGHT - (midiLevel - this.midiOffset) / const_1.CONST.MIDI_RANGE * const_1.CONST.MELODY_HEIGHT + 0.5;
+        const height = const_1.CONST.MELODY_HEIGHT / const_1.CONST.MIDI_RANGE - 0.5;
         this.ctx.fillStyle = "rgb(0, 253, 103)";
+        // this.ctx.beginPath();
+        // this.ctx.fillRect(x, y, width, height);
+        this.fillRoundRect(x, y, width, height, 2);
+    }
+    fillRoundRect(x, y, width, height, radius) {
         this.ctx.beginPath();
-        this.ctx.fillRect(x, y, width, height);
+        this.ctx.moveTo(x + radius, y);
+        this.ctx.lineTo(x + width - radius, y);
+        this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.ctx.lineTo(x + width, y + height - radius);
+        this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.ctx.lineTo(x + radius, y + height);
+        this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.ctx.lineTo(x, y + radius);
+        this.ctx.quadraticCurveTo(x, y, x + radius, y);
+        this.ctx.fill();
     }
     renderMic(midiLevel, start) {
         this.ctx.fillStyle = "rgba(255, 69, 205, 0.81)";
@@ -2292,16 +2299,22 @@ class AudioAnalyzer {
         const audioElement = document.createElement("audio");
         audioElement.src = URL.createObjectURL(stream);
         const audioContext = new AudioContext();
-        this.filter = audioContext.createScriptProcessor();
+        const BUFFER_SIZE = 2048;
+        this.filter = audioContext.createScriptProcessor(BUFFER_SIZE);
         this.analyser = audioContext.createAnalyser();
+        // const oscillator = audioContext.createOscillator();
+        // oscillator.type = "sine";
+        // oscillator.frequency.value = 440;
+        // oscillator.start();
         this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
-        const audioSorceNode = audioContext.createMediaStreamSource(stream);
-        audioSorceNode.connect(this.analyser);
+        const microphoneNode = audioContext.createMediaStreamSource(stream);
+        microphoneNode.connect(this.analyser);
         const streamDestination = audioContext.createMediaStreamDestination();
         this.analyser.connect(this.filter);
         this.filter.connect(streamDestination);
-        this.buffer = new Float32Array(const_1.CONST.FFT * 2);
-        this.grainWindow = this.hannWindow(const_1.CONST.FFT);
+        // this.filter.connect(audioContext.destination);
+        this.buffer = new Float32Array(BUFFER_SIZE * 2);
+        this.grainWindow = this.hannWindow(BUFFER_SIZE);
         this.filter.onaudioprocess = (event) => {
             const inputData = event.inputBuffer.getChannelData(0);
             const outputData = event.outputBuffer.getChannelData(0);
@@ -2313,22 +2326,22 @@ class AudioAnalyzer {
             }
             for (let i = 0; i < inputData.length; i++) {
                 inputData[i] *= this.grainWindow[i];
-                this.buffer[i] = this.buffer[i + const_1.CONST.FFT];
-                this.buffer[i + const_1.CONST.FFT] = 0.0;
+                this.buffer[i] = this.buffer[i + BUFFER_SIZE];
+                this.buffer[i + BUFFER_SIZE] = 0.0;
             }
-            const grainData = new Float32Array(const_1.CONST.FFT * 2);
-            for (let i = 0, j = 0.0; i < const_1.CONST.FFT; i++, j += this.pitchRatio) {
-                const index = Math.floor(j) % const_1.CONST.FFT;
+            const grainData = new Float32Array(BUFFER_SIZE * 2);
+            for (let i = 0, j = 0.0; i < BUFFER_SIZE; i++, j += this.pitchRatio) {
+                const index = Math.floor(j) % BUFFER_SIZE;
                 const a = inputData[index];
-                const b = inputData[(index + 1) % const_1.CONST.FFT];
+                const b = inputData[(index + 1) % BUFFER_SIZE];
                 grainData[i] += this.linearInterpolation(a, b, j % 1.0) * this.grainWindow[i];
             }
-            for (let i = 0; i < const_1.CONST.FFT; i += Math.round(const_1.CONST.FFT * (1 - 0.5))) {
-                for (let j = 0; j <= const_1.CONST.FFT; j++) {
+            for (let i = 0; i < BUFFER_SIZE; i += Math.round(BUFFER_SIZE * (1 - 0.5))) {
+                for (let j = 0; j <= BUFFER_SIZE; j++) {
                     this.buffer[i + j] += grainData[j];
                 }
             }
-            for (let i = 0; i < const_1.CONST.FFT; i++) {
+            for (let i = 0; i < BUFFER_SIZE; i++) {
                 outputData[i] = this.buffer[i];
             }
         };
@@ -2366,10 +2379,13 @@ class AudioAnalyzer {
     }
     getFrameMicData() {
         this.analyser.getByteFrequencyData(this.frequency);
-        const personVoiceFrequency = this.filterFrequency(this.frequency);
+        return this.frequencyArrayToFrequency(this.frequency);
+    }
+    frequencyArrayToFrequency(frequencyArray) {
+        const personVoiceFrequency = this.filterFrequency(frequencyArray);
         const averageMicVolume = util_1.MathUtil.average(personVoiceFrequency);
         let frequency;
-        if (averageMicVolume > 20) {
+        if (averageMicVolume > 10) {
             const squereFrequency = personVoiceFrequency.map((f) => f);
             const indexOfMaxValue = util_1.MathUtil.getIndexOfMaxValue(squereFrequency);
             // indexだけだと大雑把になるので線形補完
@@ -2389,7 +2405,6 @@ class AudioAnalyzer {
 }
 AudioAnalyzer.PERSON_MIN_INDEX = Math.floor(const_1.CONST.FFT / 44100 * const_1.CONST.MIC_FREQ_OFFSET);
 exports.AudioAnalyzer = AudioAnalyzer;
-;
 
 
 /***/ }),
@@ -2480,7 +2495,7 @@ exports.Observable = Observable;
 
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.futakotome = {
-    "delay": 4.5,
+    "delay": 4.3,
     "youtubeId": "Ljt6Pl1baIY",
     "titie": "二言目",
     "cover": "http://tn.smilevideo.jp/smile?i=21435061.L",

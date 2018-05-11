@@ -1,5 +1,5 @@
 export const futakotome = {
-  "delay": 4.5,
+  "delay": 4.3,
   "youtubeId": "Ljt6Pl1baIY",
   "titie": "二言目",
   "cover": "http://tn.smilevideo.jp/smile?i=21435061.L",

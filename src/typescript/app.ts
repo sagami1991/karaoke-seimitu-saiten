@@ -1,5 +1,5 @@
 import { CONST } from "./const";
-import { AudioConvertUtil, MathUtil, ElementUtil } from "./util";
+import { AudioConvertUtil, ElementUtil } from "./util";
 import { AudioAnalyzer } from "./AudioAnalyzer";
 import { SelectTrackView } from "./selectTrackView";
 import { IPitchBlock, ITrack } from "./interface";
@@ -84,21 +84,19 @@ class Application {
         this.stopButton.disabled = true;
         this.youtube.stop();
         const audioUrl = await this.audioAnalyzer.stopRecord();
-        this.downloadLink.style.display = "block";
+        this.downloadLink.style.display = "inline-block";
         this.downloadLink.href = audioUrl;
     }
 
     private frame() {
         const micData = this.audioAnalyzer.getFrameMicData();
+        const nowMidi = this.melodyGuid.getNowMidi();
         if (micData.frequency) {
             this.melodyGuid.addMicPitch(micData.frequency);
-            const nowMidi = this.melodyGuid.getNowMidi();
-            if (nowMidi) {
-                const pitch = AudioConvertUtil.MidiToFrequency(nowMidi) / micData.frequency;
-                this.audioAnalyzer.setPitch(pitch);
-            } else {
-                this.audioAnalyzer.setPitch(1);
-            }
+        }
+        if (nowMidi && micData.frequency) {
+            const pitch = AudioConvertUtil.MidiToFrequency(nowMidi) / micData.frequency;
+            this.audioAnalyzer.setPitch(pitch);
         } else {
             this.audioAnalyzer.setPitch(1);
         }
@@ -136,15 +134,10 @@ class VolumeUI {
 class YoutubeAPI {
     private stateChange!: (state: 1 | 2) => void;
     private player!: YT.Player;
-    // private ready!: () => void;
 
     public setStateChangeListener(func: (state: 1 | 2) => void) {
         this.stateChange = func;
     }
-
-    // public setReadyListener(func: () => void) {
-    //     this.ready = func;
-    // }
 
     public start() {
         this.player.playVideo();
@@ -214,23 +207,23 @@ class MelodyGuid {
 
     public addMicPitch(frequency: number) {
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
-        let midi = AudioConvertUtil.frequencyToMidi(frequency);
-        if (60 > midi) {
-            midi += 12;
-            if (60 - 12 > midi) {
-                midi += 12;
+        let micMidiNumber = AudioConvertUtil.frequencyToMidi(frequency);
+        if (this.midiOffset > micMidiNumber) {
+            micMidiNumber += 12;
+            if (this.midiOffset > micMidiNumber) {
+                micMidiNumber += 12;
             }
         }
         this.MicRecords.push({
             time: now,
-            midi: midi
+            midi: micMidiNumber
         });
     }
 
     public getNowMidi() {
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
-        const nowOrigin = this.originRecords.filter(block => {
-            return block.time <= now  && now <= block.time + block.duration!;
+        const nowOrigin = this.originRecords.filter((block) => {
+            return block.time <= (now - this.delay) && (now - this.delay) <= block.time + block.duration!;
         });
         if (nowOrigin[0]) {
             return nowOrigin[0].midi;
@@ -285,12 +278,26 @@ class MelodyGuid {
         }
         const width = duration / CONST.BASE_SEC * CONST.MELODY_WIDTH;
         const x = start / CONST.BASE_SEC * CONST.MELODY_WIDTH;
-        const y = CONST.MELODY_HEIGHT - (midiLevel - this.midiOffset) / CONST.MIDI_RANGE * CONST.MELODY_HEIGHT;
-        const height = CONST.MELODY_HEIGHT / CONST.MIDI_RANGE;
+        const y = CONST.MELODY_HEIGHT - (midiLevel - this.midiOffset) / CONST.MIDI_RANGE * CONST.MELODY_HEIGHT + 0.5;
+        const height = CONST.MELODY_HEIGHT / CONST.MIDI_RANGE - 0.5;
         this.ctx.fillStyle = "rgb(0, 253, 103)";
-        this.ctx.beginPath();
-        this.ctx.fillRect(x, y, width, height);
+        // this.ctx.beginPath();
+        // this.ctx.fillRect(x, y, width, height);
+        this.fillRoundRect(x, y, width, height, 2);
+    }
 
+    private fillRoundRect(x: number, y: number, width: number, height: number, radius: number) {
+        this.ctx.beginPath();
+        this.ctx.moveTo(x + radius, y);
+        this.ctx.lineTo(x + width - radius, y);
+        this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        this.ctx.lineTo(x + width, y + height - radius);
+        this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        this.ctx.lineTo(x + radius, y + height);
+        this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        this.ctx.lineTo(x, y + radius);
+        this.ctx.quadraticCurveTo(x, y, x + radius, y);
+        this.ctx.fill();
     }
 
     private renderMic(midiLevel: number, start: number) {

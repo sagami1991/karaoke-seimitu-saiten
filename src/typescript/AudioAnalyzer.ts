@@ -19,21 +19,26 @@ export class AudioAnalyzer {
     private grainWindow: Float32Array;
     private pitchRatio = 1;
     private static PERSON_MIN_INDEX = Math.floor(CONST.FFT / 44100 * CONST.MIC_FREQ_OFFSET);
-
     constructor(stream: MediaStream) {
         const audioElement = document.createElement("audio");
         audioElement.src = URL.createObjectURL(stream);
         const audioContext = new AudioContext();
-        this.filter = audioContext.createScriptProcessor();
+        const BUFFER_SIZE = 2048;
+        this.filter = audioContext.createScriptProcessor(BUFFER_SIZE);
         this.analyser = audioContext.createAnalyser();
+        // const oscillator = audioContext.createOscillator();
+        // oscillator.type = "sine";
+        // oscillator.frequency.value = 440;
+        // oscillator.start();
         this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
-        const audioSorceNode = audioContext.createMediaStreamSource(stream);
-        audioSorceNode.connect(this.analyser);
+        const microphoneNode = audioContext.createMediaStreamSource(stream);
+        microphoneNode.connect(this.analyser);
         const streamDestination = (audioContext as any).createMediaStreamDestination();
         this.analyser.connect(this.filter);
         this.filter.connect(streamDestination);
-        this.buffer = new Float32Array(CONST.FFT * 2);
-        this.grainWindow = this.hannWindow(CONST.FFT);
+        // this.filter.connect(audioContext.destination);
+        this.buffer = new Float32Array(BUFFER_SIZE * 2);
+        this.grainWindow = this.hannWindow(BUFFER_SIZE);
         this.filter.onaudioprocess = (event) => {
             const inputData = event.inputBuffer.getChannelData(0);
             const outputData = event.outputBuffer.getChannelData(0);
@@ -45,26 +50,26 @@ export class AudioAnalyzer {
             }
             for (let i = 0; i < inputData.length; i++) {
                 inputData[i] *= this.grainWindow[i];
-                this.buffer[i] = this.buffer[i + CONST.FFT];
-                this.buffer[i + CONST.FFT] = 0.0;
+                this.buffer[i] = this.buffer[i + BUFFER_SIZE];
+                this.buffer[i + BUFFER_SIZE] = 0.0;
             }
-            const grainData = new Float32Array(CONST.FFT * 2);
+            const grainData = new Float32Array(BUFFER_SIZE * 2);
             for (let i = 0, j = 0.0;
-                 i < CONST.FFT;
+                 i < BUFFER_SIZE;
                  i++, j += this.pitchRatio) {
-                const index = Math.floor(j) % CONST.FFT;
+                const index = Math.floor(j) % BUFFER_SIZE;
                 const a = inputData[index];
-                const b = inputData[(index + 1) % CONST.FFT];
+                const b = inputData[(index + 1) % BUFFER_SIZE];
                 grainData[i] += this.linearInterpolation(a, b, j % 1.0) * this.grainWindow[i];
             }
 
-            for (let i = 0; i < CONST.FFT; i += Math.round(CONST.FFT * (1 - 0.5))) {
-                for (let j = 0; j <= CONST.FFT; j++) {
+            for (let i = 0; i < BUFFER_SIZE; i += Math.round(BUFFER_SIZE * (1 - 0.5))) {
+                for (let j = 0; j <= BUFFER_SIZE; j++) {
                     this.buffer[i + j] += grainData[j];
                 }
             }
 
-            for (let i = 0; i < CONST.FFT; i++) {
+            for (let i = 0; i < BUFFER_SIZE; i++) {
                 outputData[i] = this.buffer[i];
             }
         };
@@ -108,10 +113,14 @@ export class AudioAnalyzer {
 
     public getFrameMicData(): {frequency?: number, volume: number} {
         this.analyser.getByteFrequencyData(this.frequency);
-        const personVoiceFrequency = this.filterFrequency(this.frequency);
+        return this.frequencyArrayToFrequency(this.frequency);
+    }
+
+    private frequencyArrayToFrequency(frequencyArray: Uint8Array) {
+        const personVoiceFrequency = this.filterFrequency(frequencyArray);
         const averageMicVolume = MathUtil.average(personVoiceFrequency);
         let frequency: number | undefined;
-        if (averageMicVolume > 20) {
+        if (averageMicVolume > 10) {
             const squereFrequency = personVoiceFrequency.map((f) => f);
             const indexOfMaxValue = MathUtil.getIndexOfMaxValue(squereFrequency);
             // indexだけだと大雑把になるので線形補完
@@ -123,11 +132,10 @@ export class AudioAnalyzer {
             frequency: frequency,
             volume: averageMicVolume
         };
-
     }
 
     private filterFrequency(frequencyData: Uint8Array): Uint8Array {
         const maxIndex = Math.floor(this.analyser.fftSize / 44100 * 3000);
         return frequencyData.slice(AudioAnalyzer.PERSON_MIN_INDEX, maxIndex);
     }
-};
+}
