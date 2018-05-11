@@ -95,7 +95,6 @@ class Application {
             const nowMidi = this.melodyGuid.getNowMidi();
             if (nowMidi) {
                 const pitch = AudioConvertUtil.MidiToFrequency(nowMidi) / micData.frequency;
-                console.log(pitch);
                 this.audioAnalyzer.setPitch(pitch);
             } else {
                 this.audioAnalyzer.setPitch(1);
@@ -180,7 +179,7 @@ class YoutubeAPI {
             const currentUrl = `${splitedUrl[0]}//${splitedUrl[2]}`;
             const param = `version=3&enablejsapi=1&origin=${currentUrl}`;
             const iframe = ElementUtil.builder(`
-                <iframe id="player" width="${560}" height="${315}" class="youtube-iframe"
+                <iframe id="player" width="${560}" height="${350}" class="youtube-iframe"
                 src="https://www.youtube.com/embed/hoge?${param}"
                 frameborder="0"></iframe>
             `);
@@ -231,7 +230,7 @@ class MelodyGuid {
     public getNowMidi() {
         const now = (new Date().getTime() - this.startTime.getTime()) / 1000;
         const nowOrigin = this.originRecords.filter(block => {
-            return block.time <= now  && now <= block.time + block.duration!; 
+            return block.time <= now  && now <= block.time + block.duration!;
         });
         if (nowOrigin[0]) {
             return nowOrigin[0].midi;
