@@ -67,10 +67,10 @@ class Application {
 
     private start() {
         this.playMode = "PLAYING";
-        this.downloadLink.style.display = "none";
+        // this.downloadLink.style.display = "none";
         this.stopButton.disabled = false;
         this.melodyGuid.start();
-        this.audioAnalyzer.startRecord();
+        // this.audioAnalyzer.startRecord();
         return setInterval(() => {
             this.frame();
         }, 1000 / CONST.FPS);
@@ -83,9 +83,9 @@ class Application {
         this.playMode = "STOP";
         this.stopButton.disabled = true;
         this.youtube.stop();
-        const audioUrl = await this.audioAnalyzer.stopRecord();
-        this.downloadLink.style.display = "inline-block";
-        this.downloadLink.href = audioUrl;
+        // const audioUrl = await this.audioAnalyzer.stopRecord();
+        // this.downloadLink.style.display = "inline-block";
+        // this.downloadLink.href = audioUrl;
     }
 
     private frame() {

@@ -60,11 +60,71 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 1);
+/******/ 	return __webpack_require__(__webpack_require__.s = 4);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const const_1 = __webpack_require__(1);
+class ElementUtil {
+    static builder(html) {
+        const container = document.createElement("div");
+        container.innerHTML = html;
+        if (container.children.length !== 1) {
+            throw new Error(`親要素はひとつまで 数: ${container.children.length} html: ${html}`);
+        }
+        const element = container.firstElementChild;
+        container.removeChild(element);
+        return element;
+    }
+    static getSvgIcon(icon, size = "m", className) {
+        return `
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon-svg icon-${size} ${className || ""}">
+            <use xlink:href="#${icon}"/>
+        </svg>`;
+    }
+}
+exports.ElementUtil = ElementUtil;
+class MathUtil {
+    static average(array) {
+        return MathUtil.sum(array) / array.length;
+    }
+    static sum(array) {
+        let sum = 0;
+        for (const num of array) {
+            sum += num;
+        }
+        return sum;
+    }
+    static getIndexOfMaxValue(array) {
+        return array.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
+    }
+    static tail(array) {
+        return array[array.length - 1];
+    }
+}
+exports.MathUtil = MathUtil;
+class AudioConvertUtil {
+    static frequencyToMidi(f) {
+        return Math.log2(f / 440) * 12 + 69;
+    }
+    static MidiToFrequency(midi) {
+        return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+    static indexToFrequency(index) {
+        return Math.round(index * const_1.CONST.FRAMERATE / const_1.CONST.FFT);
+    }
+}
+exports.AudioConvertUtil = AudioConvertUtil;
+
+
+/***/ }),
+/* 1 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -83,7 +143,103 @@ exports.CONST = {
 
 
 /***/ }),
-/* 1 */
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+class Observable {
+    constructor() {
+        this.listenMap = new Map();
+    }
+    static createObserverId() {
+        return `observer_${this.observerId++}`;
+    }
+    addListener(name, observerId, cb) {
+        if (this.listenMap.get(observerId) === undefined) {
+            this.listenMap.set(observerId, {});
+        }
+        this.listenMap.get(observerId)[name] = cb;
+    }
+    disposeObserve(observerId) {
+        this.listenMap.delete(observerId);
+    }
+    trigger(name, args) {
+        this.listenMap.forEach(map => {
+            const callback = map[name];
+            if (callback) {
+                callback(args);
+            }
+        });
+    }
+    getObservers() {
+        return Array.from(this.listenMap.values());
+    }
+}
+Observable.observerId = 0;
+exports.Observable = Observable;
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const util_1 = __webpack_require__(0);
+class ComponentScanner {
+    static register(component, option) {
+        this.id++;
+        this.components.set(this.id, { component: component, option: option });
+        return this.id;
+    }
+    static scanHtml(html) {
+        const outerElem = util_1.ElementUtil.builder(html);
+        this.scan(outerElem);
+        return outerElem;
+    }
+    static scanHtmls(html) {
+        const container = document.createElement("div");
+        container.innerHTML = html;
+        this.scan(container);
+        const elements = [];
+        while (container.firstChild) {
+            const element = container.firstChild;
+            container.removeChild(element);
+            elements.push(element);
+        }
+        return elements;
+    }
+    static scan(outerElem) {
+        const elements = outerElem.querySelectorAll(".my-component");
+        if (elements.length === 0) {
+            // throw new Error("Component not found");
+        }
+        for (const element of Array.from(elements)) {
+            const id = element.getAttribute("component-id");
+            if (!id) {
+                throw new Error("予期せぬエラー component-idが存在しない");
+            }
+            const componentId = +id;
+            const componentSet = this.components.get(componentId);
+            if (componentSet === undefined) {
+                throw new Error("すでにスキャン済み");
+            }
+            this.components.delete(componentId);
+            componentSet.component.preInitElem(element);
+            componentSet.component.initElem(element, componentSet.option);
+        }
+    }
+}
+ComponentScanner.components = new Map();
+ComponentScanner.id = 0;
+exports.ComponentScanner = ComponentScanner;
+
+
+/***/ }),
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -97,8 +253,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const const_1 = __webpack_require__(0);
-const util_1 = __webpack_require__(3);
+const const_1 = __webpack_require__(1);
+const util_1 = __webpack_require__(0);
 const AudioAnalyzer_1 = __webpack_require__(5);
 const selectTrackView_1 = __webpack_require__(6);
 class Application {
@@ -155,10 +311,10 @@ class Application {
     }
     start() {
         this.playMode = "PLAYING";
-        this.downloadLink.style.display = "none";
+        // this.downloadLink.style.display = "none";
         this.stopButton.disabled = false;
         this.melodyGuid.start();
-        this.audioAnalyzer.startRecord();
+        // this.audioAnalyzer.startRecord();
         return setInterval(() => {
             this.frame();
         }, 1000 / const_1.CONST.FPS);
@@ -171,9 +327,9 @@ class Application {
             this.playMode = "STOP";
             this.stopButton.disabled = true;
             this.youtube.stop();
-            const audioUrl = yield this.audioAnalyzer.stopRecord();
-            this.downloadLink.style.display = "inline-block";
-            this.downloadLink.href = audioUrl;
+            // const audioUrl = await this.audioAnalyzer.stopRecord();
+            // this.downloadLink.style.display = "inline-block";
+            // this.downloadLink.href = audioUrl;
         });
     }
     frame() {
@@ -391,68 +547,172 @@ class MelodyGuid {
 
 
 /***/ }),
-/* 2 */,
-/* 3 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const const_1 = __webpack_require__(0);
-class ElementUtil {
-    static builder(html) {
-        const container = document.createElement("div");
-        container.innerHTML = html;
-        if (container.children.length !== 1) {
-            throw new Error(`親要素はひとつまで 数: ${container.children.length} html: ${html}`);
+const const_1 = __webpack_require__(1);
+const util_1 = __webpack_require__(0);
+class AudioAnalyzer {
+    constructor(stream) {
+        this.recordeChunks = [];
+        this.pitchRatio = 1;
+        const audioElement = document.createElement("audio");
+        audioElement.src = URL.createObjectURL(stream);
+        const audioContext = new AudioContext();
+        const BUFFER_SIZE = 2048;
+        this.filter = audioContext.createScriptProcessor(BUFFER_SIZE);
+        this.analyser = audioContext.createAnalyser();
+        // const oscillator = audioContext.createOscillator();
+        // oscillator.type = "sine";
+        // oscillator.frequency.value = 440;
+        // oscillator.start();
+        this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
+        const microphoneNode = audioContext.createMediaStreamSource(stream);
+        microphoneNode.connect(this.analyser);
+        const streamDestination = audioContext.createMediaStreamDestination();
+        this.analyser.connect(this.filter);
+        this.filter.connect(streamDestination);
+        // this.filter.connect(audioContext.destination);
+        this.buffer = new Float32Array(BUFFER_SIZE * 2);
+        this.grainWindow = this.hannWindow(BUFFER_SIZE);
+        this.filter.onaudioprocess = (event) => {
+            const inputData = event.inputBuffer.getChannelData(0);
+            const outputData = event.outputBuffer.getChannelData(0);
+            if (this.pitchRatio === 1) {
+                inputData.forEach((value, i) => {
+                    outputData[i] = value;
+                });
+                return;
+            }
+            for (let i = 0; i < inputData.length; i++) {
+                inputData[i] *= this.grainWindow[i];
+                this.buffer[i] = this.buffer[i + BUFFER_SIZE];
+                this.buffer[i + BUFFER_SIZE] = 0.0;
+            }
+            const grainData = new Float32Array(BUFFER_SIZE * 2);
+            for (let i = 0, j = 0.0; i < BUFFER_SIZE; i++, j += this.pitchRatio) {
+                const index = Math.floor(j) % BUFFER_SIZE;
+                const a = inputData[index];
+                const b = inputData[(index + 1) % BUFFER_SIZE];
+                grainData[i] += this.linearInterpolation(a, b, j % 1.0) * this.grainWindow[i];
+            }
+            for (let i = 0; i < BUFFER_SIZE; i += Math.round(BUFFER_SIZE * (1 - 0.5))) {
+                for (let j = 0; j <= BUFFER_SIZE; j++) {
+                    this.buffer[i + j] += grainData[j];
+                }
+            }
+            for (let i = 0; i < BUFFER_SIZE; i++) {
+                outputData[i] = this.buffer[i];
+            }
+        };
+        this.recorder = new MediaRecorder(streamDestination.stream);
+        this.recorder.addEventListener("dataavailable", (event) => {
+            this.recordeChunks.push(event.data);
+        });
+    }
+    hannWindow(length) {
+        const array = new Float32Array(length);
+        for (let i = 0; i < length; i++) {
+            array[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (length - 1)));
         }
-        const element = container.firstElementChild;
-        container.removeChild(element);
-        return element;
+        return array;
     }
-    static getSvgIcon(icon, size = "m", className) {
-        return `
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon-svg icon-${size} ${className || ""}">
-            <use xlink:href="#${icon}"/>
-        </svg>`;
+    linearInterpolation(a, b, t) {
+        return a + (b - a) * t;
     }
-}
-exports.ElementUtil = ElementUtil;
-class MathUtil {
-    static average(array) {
-        return MathUtil.sum(array) / array.length;
+    setPitch(ratio) {
+        this.pitchRatio = ratio;
     }
-    static sum(array) {
-        let sum = 0;
-        for (const num of array) {
-            sum += num;
+    startRecord() {
+        this.recordeChunks = [];
+        this.recorder.start();
+    }
+    stopRecord() {
+        return new Promise(resolve => {
+            this.recorder.onstop = (event) => {
+                const audioBlob = new Blob(this.recordeChunks);
+                const audioUrl = URL.createObjectURL(audioBlob);
+                resolve(audioUrl);
+            };
+            this.recorder.stop();
+        });
+    }
+    getFrameMicData() {
+        this.analyser.getByteFrequencyData(this.frequency);
+        return this.frequencyArrayToFrequency(this.frequency);
+    }
+    frequencyArrayToFrequency(frequencyArray) {
+        const personVoiceFrequency = this.filterFrequency(frequencyArray);
+        const averageMicVolume = util_1.MathUtil.average(personVoiceFrequency);
+        let frequency;
+        if (averageMicVolume > 10) {
+            const squereFrequency = personVoiceFrequency.map((f) => f);
+            const indexOfMaxValue = util_1.MathUtil.getIndexOfMaxValue(squereFrequency);
+            // indexだけだと大雑把になるので線形補完
+            const [y0, y1, y2] = squereFrequency.slice(indexOfMaxValue - 1, indexOfMaxValue + 2);
+            const x1 = (y2 - y0) * 0.5 / (2 * y1 - y2 - y0);
+            frequency = util_1.AudioConvertUtil.indexToFrequency(indexOfMaxValue + x1 + AudioAnalyzer.PERSON_MIN_INDEX);
         }
-        return sum;
+        return {
+            frequency: frequency,
+            volume: averageMicVolume
+        };
     }
-    static getIndexOfMaxValue(array) {
-        return array.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
-    }
-    static tail(array) {
-        return array[array.length - 1];
-    }
-}
-exports.MathUtil = MathUtil;
-class AudioConvertUtil {
-    static frequencyToMidi(f) {
-        return Math.log2(f / 440) * 12 + 69;
-    }
-    static MidiToFrequency(midi) {
-        return 440 * Math.pow(2, (midi - 69) / 12);
-    }
-    static indexToFrequency(index) {
-        return Math.round(index * const_1.CONST.FRAMERATE / const_1.CONST.FFT);
+    filterFrequency(frequencyData) {
+        const maxIndex = Math.floor(this.analyser.fftSize / 44100 * 3000);
+        return frequencyData.slice(AudioAnalyzer.PERSON_MIN_INDEX, maxIndex);
     }
 }
-exports.AudioConvertUtil = AudioConvertUtil;
+AudioAnalyzer.PERSON_MIN_INDEX = Math.floor(const_1.CONST.FFT / 44100 * const_1.CONST.MIC_FREQ_OFFSET);
+exports.AudioAnalyzer = AudioAnalyzer;
 
 
 /***/ }),
-/* 4 */
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", { value: true });
+const util_1 = __webpack_require__(0);
+const observable_1 = __webpack_require__(2);
+const silhouette_1 = __webpack_require__(7);
+const futakotome_1 = __webpack_require__(8);
+const trackTile_1 = __webpack_require__(9);
+const scanner_1 = __webpack_require__(3);
+const kiminosiranai_1 = __webpack_require__(11);
+class SelectTrackView extends observable_1.Observable {
+    get el() {
+        return this._el;
+    }
+    constructor() {
+        super();
+        const tracks = [silhouette_1.silhouette, futakotome_1.futakotome, kiminosiranai_1.kiminosiranai];
+        const trackParts = tracks.map((track) => {
+            return new trackTile_1.TrackTileComponent({
+                title: track.titie,
+                coverImage: track.cover,
+                onClick: () => {
+                    this.trigger("select", track);
+                }
+            });
+        });
+        this._el = util_1.ElementUtil.builder(`
+            <div class="select-track-view">
+                ${trackParts.map((trackPart) => trackPart.html()).join("")}
+            </div>
+        `);
+        scanner_1.ComponentScanner.scan(this._el);
+    }
+}
+exports.SelectTrackView = SelectTrackView;
+
+
+/***/ }),
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2284,210 +2544,6 @@ exports.silhouette = {
 
 
 /***/ }),
-/* 5 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const const_1 = __webpack_require__(0);
-const util_1 = __webpack_require__(3);
-class AudioAnalyzer {
-    constructor(stream) {
-        this.recordeChunks = [];
-        this.pitchRatio = 1;
-        const audioElement = document.createElement("audio");
-        audioElement.src = URL.createObjectURL(stream);
-        const audioContext = new AudioContext();
-        const BUFFER_SIZE = 2048;
-        this.filter = audioContext.createScriptProcessor(BUFFER_SIZE);
-        this.analyser = audioContext.createAnalyser();
-        // const oscillator = audioContext.createOscillator();
-        // oscillator.type = "sine";
-        // oscillator.frequency.value = 440;
-        // oscillator.start();
-        this.frequency = new Uint8Array(this.analyser.frequencyBinCount);
-        const microphoneNode = audioContext.createMediaStreamSource(stream);
-        microphoneNode.connect(this.analyser);
-        const streamDestination = audioContext.createMediaStreamDestination();
-        this.analyser.connect(this.filter);
-        this.filter.connect(streamDestination);
-        // this.filter.connect(audioContext.destination);
-        this.buffer = new Float32Array(BUFFER_SIZE * 2);
-        this.grainWindow = this.hannWindow(BUFFER_SIZE);
-        this.filter.onaudioprocess = (event) => {
-            const inputData = event.inputBuffer.getChannelData(0);
-            const outputData = event.outputBuffer.getChannelData(0);
-            if (this.pitchRatio === 1) {
-                inputData.forEach((value, i) => {
-                    outputData[i] = value;
-                });
-                return;
-            }
-            for (let i = 0; i < inputData.length; i++) {
-                inputData[i] *= this.grainWindow[i];
-                this.buffer[i] = this.buffer[i + BUFFER_SIZE];
-                this.buffer[i + BUFFER_SIZE] = 0.0;
-            }
-            const grainData = new Float32Array(BUFFER_SIZE * 2);
-            for (let i = 0, j = 0.0; i < BUFFER_SIZE; i++, j += this.pitchRatio) {
-                const index = Math.floor(j) % BUFFER_SIZE;
-                const a = inputData[index];
-                const b = inputData[(index + 1) % BUFFER_SIZE];
-                grainData[i] += this.linearInterpolation(a, b, j % 1.0) * this.grainWindow[i];
-            }
-            for (let i = 0; i < BUFFER_SIZE; i += Math.round(BUFFER_SIZE * (1 - 0.5))) {
-                for (let j = 0; j <= BUFFER_SIZE; j++) {
-                    this.buffer[i + j] += grainData[j];
-                }
-            }
-            for (let i = 0; i < BUFFER_SIZE; i++) {
-                outputData[i] = this.buffer[i];
-            }
-        };
-        this.recorder = new MediaRecorder(streamDestination.stream);
-        this.recorder.addEventListener("dataavailable", (event) => {
-            this.recordeChunks.push(event.data);
-        });
-    }
-    hannWindow(length) {
-        const array = new Float32Array(length);
-        for (let i = 0; i < length; i++) {
-            array[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (length - 1)));
-        }
-        return array;
-    }
-    linearInterpolation(a, b, t) {
-        return a + (b - a) * t;
-    }
-    setPitch(ratio) {
-        this.pitchRatio = ratio;
-    }
-    startRecord() {
-        this.recordeChunks = [];
-        this.recorder.start();
-    }
-    stopRecord() {
-        return new Promise(resolve => {
-            this.recorder.onstop = (event) => {
-                const audioBlob = new Blob(this.recordeChunks);
-                const audioUrl = URL.createObjectURL(audioBlob);
-                resolve(audioUrl);
-            };
-            this.recorder.stop();
-        });
-    }
-    getFrameMicData() {
-        this.analyser.getByteFrequencyData(this.frequency);
-        return this.frequencyArrayToFrequency(this.frequency);
-    }
-    frequencyArrayToFrequency(frequencyArray) {
-        const personVoiceFrequency = this.filterFrequency(frequencyArray);
-        const averageMicVolume = util_1.MathUtil.average(personVoiceFrequency);
-        let frequency;
-        if (averageMicVolume > 10) {
-            const squereFrequency = personVoiceFrequency.map((f) => f);
-            const indexOfMaxValue = util_1.MathUtil.getIndexOfMaxValue(squereFrequency);
-            // indexだけだと大雑把になるので線形補完
-            const [y0, y1, y2] = squereFrequency.slice(indexOfMaxValue - 1, indexOfMaxValue + 2);
-            const x1 = (y2 - y0) * 0.5 / (2 * y1 - y2 - y0);
-            frequency = util_1.AudioConvertUtil.indexToFrequency(indexOfMaxValue + x1 + AudioAnalyzer.PERSON_MIN_INDEX);
-        }
-        return {
-            frequency: frequency,
-            volume: averageMicVolume
-        };
-    }
-    filterFrequency(frequencyData) {
-        const maxIndex = Math.floor(this.analyser.fftSize / 44100 * 3000);
-        return frequencyData.slice(AudioAnalyzer.PERSON_MIN_INDEX, maxIndex);
-    }
-}
-AudioAnalyzer.PERSON_MIN_INDEX = Math.floor(const_1.CONST.FFT / 44100 * const_1.CONST.MIC_FREQ_OFFSET);
-exports.AudioAnalyzer = AudioAnalyzer;
-
-
-/***/ }),
-/* 6 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const util_1 = __webpack_require__(3);
-const observable_1 = __webpack_require__(7);
-const silhouette_1 = __webpack_require__(4);
-const futakotome_1 = __webpack_require__(8);
-const trackTile_1 = __webpack_require__(9);
-const scanner_1 = __webpack_require__(11);
-const kiminosiranai_1 = __webpack_require__(13);
-class SelectTrackView extends observable_1.Observable {
-    get el() {
-        return this._el;
-    }
-    constructor() {
-        super();
-        const tracks = [silhouette_1.silhouette, futakotome_1.futakotome, kiminosiranai_1.kiminosiranai];
-        const trackParts = tracks.map((track) => {
-            return new trackTile_1.TrackTileComponent({
-                title: track.titie,
-                coverImage: track.cover,
-                onClick: () => {
-                    this.trigger("select", track);
-                }
-            });
-        });
-        this._el = util_1.ElementUtil.builder(`
-            <div class="select-track-view">
-                ${trackParts.map((trackPart) => trackPart.html()).join("")}
-            </div>
-        `);
-        scanner_1.ComponentScanner.scan(this._el);
-    }
-}
-exports.SelectTrackView = SelectTrackView;
-
-
-/***/ }),
-/* 7 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-class Observable {
-    constructor() {
-        this.listenMap = new Map();
-    }
-    static createObserverId() {
-        return `observer_${this.observerId++}`;
-    }
-    addListener(name, observerId, cb) {
-        if (this.listenMap.get(observerId) === undefined) {
-            this.listenMap.set(observerId, {});
-        }
-        this.listenMap.get(observerId)[name] = cb;
-    }
-    disposeObserve(observerId) {
-        this.listenMap.delete(observerId);
-    }
-    trigger(name, args) {
-        this.listenMap.forEach(map => {
-            const callback = map[name];
-            if (callback) {
-                callback(args);
-            }
-        });
-    }
-    getObservers() {
-        return Array.from(this.listenMap.values());
-    }
-}
-Observable.observerId = 0;
-exports.Observable = Observable;
-
-
-/***/ }),
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -3810,7 +3866,7 @@ exports.futakotome = {
 
 Object.defineProperty(exports, "__esModule", { value: true });
 const baseComponent_1 = __webpack_require__(10);
-const util_1 = __webpack_require__(3);
+const util_1 = __webpack_require__(0);
 class TrackTileComponent extends baseComponent_1.BaseComponent {
     /** @override */
     html() {
@@ -3847,8 +3903,8 @@ exports.TrackTileComponent = TrackTileComponent;
 "use strict";
 
 Object.defineProperty(exports, "__esModule", { value: true });
-const observable_1 = __webpack_require__(7);
-const scanner_1 = __webpack_require__(11);
+const observable_1 = __webpack_require__(2);
+const scanner_1 = __webpack_require__(3);
 class BaseComponent extends observable_1.Observable {
     constructor(option) {
         super();
@@ -3879,69 +3935,6 @@ exports.BaseComponent = BaseComponent;
 
 /***/ }),
 /* 11 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", { value: true });
-const util_1 = __webpack_require__(3);
-class ComponentScanner {
-    static register(component, option) {
-        this.id++;
-        this.components.set(this.id, { component: component, option: option });
-        return this.id;
-    }
-    static scanHtml(html) {
-        const outerElem = util_1.ElementUtil.builder(html);
-        this.scan(outerElem);
-        return outerElem;
-    }
-    static scanHtmls(html) {
-        const container = document.createElement("div");
-        container.innerHTML = html;
-        this.scan(container);
-        const elements = [];
-        while (container.firstChild) {
-            const element = container.firstChild;
-            container.removeChild(element);
-            elements.push(element);
-        }
-        return elements;
-    }
-    static scan(outerElem) {
-        const elements = outerElem.querySelectorAll(".my-component");
-        if (elements.length === 0) {
-            // throw new Error("Component not found");
-        }
-        for (const element of Array.from(elements)) {
-            const id = element.getAttribute("component-id");
-            if (!id) {
-                throw new Error("予期せぬエラー component-idが存在しない");
-            }
-            const componentId = +id;
-            const componentSet = this.components.get(componentId);
-            if (componentSet === undefined) {
-                throw new Error("すでにスキャン済み");
-            }
-            this.components.delete(componentId);
-            componentSet.component.preInitElem(element);
-            componentSet.component.initElem(element, componentSet.option);
-        }
-    }
-}
-ComponentScanner.components = new Map();
-ComponentScanner.id = 0;
-exports.ComponentScanner = ComponentScanner;
-
-
-/***/ }),
-/* 12 */
-/***/ (function(module, exports) {
-
-module.exports = "<svg style=\"display:none\" width=\"580\" height=\"400\" \r\n    xmlns=\"http://www.w3.org/2000/svg\">\r\n    <defs>\r\n        <symbol id=\"icon-information\" viewBox=\"0 0 24 24\" fill=\"#7698b3\">\r\n            <path d=\"M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z\" />\r\n        </symbol>\r\n        <symbol id=\"icon-sort\" viewBox=\"0 0 24 24\">\r\n            <path d=\"M10,13V11H18V13H10M10,19V17H14V19H10M10,7V5H22V7H10M6,17H8.5L5,20.5L1.5,17H4V7H1.5L5,3.5L8.5,7H6V17Z\" />\r\n        </symbol>\r\n        <symbol id=\"icon-play\" viewBox=\"0 0 24 24\">\r\n            <path d=\"M8,5.14V19.14L19,12.14L8,5.14Z\" />\r\n        </symbol>\r\n    </defs>\r\n</svg>\r\n"
-
-/***/ }),
-/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5029,6 +5022,12 @@ exports.kiminosiranai = {
     ]
 };
 
+
+/***/ }),
+/* 12 */
+/***/ (function(module, exports) {
+
+module.exports = "<svg style=\"display:none\" width=\"580\" height=\"400\" \r\n    xmlns=\"http://www.w3.org/2000/svg\">\r\n    <defs>\r\n        <symbol id=\"icon-information\" viewBox=\"0 0 24 24\" fill=\"#7698b3\">\r\n            <path d=\"M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z\" />\r\n        </symbol>\r\n        <symbol id=\"icon-sort\" viewBox=\"0 0 24 24\">\r\n            <path d=\"M10,13V11H18V13H10M10,19V17H14V19H10M10,7V5H22V7H10M6,17H8.5L5,20.5L1.5,17H4V7H1.5L5,3.5L8.5,7H6V17Z\" />\r\n        </symbol>\r\n        <symbol id=\"icon-play\" viewBox=\"0 0 24 24\">\r\n            <path d=\"M8,5.14V19.14L19,12.14L8,5.14Z\" />\r\n        </symbol>\r\n    </defs>\r\n</svg>\r\n"
 
 /***/ })
 /******/ ]);
