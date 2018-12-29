@@ -10,7 +10,7 @@ export class Observable<T> {
         if (this.listenMap.get(observerId) === undefined) {
             this.listenMap.set(observerId, {});
         }
-        this.listenMap.get(observerId)![name] = cb;
+        this.listenMap.get(observerId)![name] = <any>cb;
     }
 
     public disposeObserve(observerId: string) {

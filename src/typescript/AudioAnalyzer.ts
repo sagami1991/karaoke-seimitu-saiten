@@ -21,7 +21,7 @@ export class AudioAnalyzer {
     private static PERSON_MIN_INDEX = Math.floor(CONST.FFT / 44100 * CONST.MIC_FREQ_OFFSET);
     constructor(stream: MediaStream) {
         const audioElement = document.createElement("audio");
-        audioElement.src = URL.createObjectURL(stream);
+        audioElement.srcObject = stream
         const audioContext = new AudioContext();
         const BUFFER_SIZE = 2048;
         this.filter = audioContext.createScriptProcessor(BUFFER_SIZE);
